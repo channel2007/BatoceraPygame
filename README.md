@@ -13,3 +13,6 @@ Batocera模擬器上玩自製Pygame遊戲
   * 左右：移動飛機
   * Ａ：發射子彈
   * Ｂ：加快飛機移動速度
+* 圖片
+![alt 太空侵略者](https://github.com/channel2007/BatoceraPygame/blob/master/images/SpaceInvaders-image.png "太空侵略者")
+
