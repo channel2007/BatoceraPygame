@@ -1,7 +1,7 @@
 # 前言
 Batocera模擬器上玩自製Pygame遊戲
 
-# 安裝方式
+# 安裝方法
 下載後請先解壓縮並將所有檔案放入安裝有Batocera模擬器的SD卡share\roms\pygame目錄內，並重新開啟機器就可以在Pygame選單內看到遊戲。
 
 # 遊戲介紹
