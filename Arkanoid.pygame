@@ -1,0 +1,177 @@
+# encoding: utf-8
+import os
+import random
+import sys
+
+import pygame
+from pygame.locals import *
+from Arkanoid_drew import *
+
+canvas_width = 0
+canvas_height = 0
+block = (0,0,0)
+bricks_list = []
+dx =  8
+dy = -8
+sp = 8
+fail = 0
+game_mode = 0
+
+def showFont( text, x, y, color):
+    global canvas    
+    text = font.render(text, True, color) 
+    canvas.blit( text, (x,y))
+
+def showFontDebug( text, x, y, color):
+    global canvas    
+    text = fontDebug.render(text, True, color) 
+    canvas.blit( text, (x,y))
+
+def isCollision( x, y, boxRect):
+    if (x >= boxRect[0] and x <= boxRect[0] + boxRect[2] and y >= boxRect[1] and y <= boxRect[1] + boxRect[3]):
+        return True;          
+    return False;  
+
+def resetGame():
+    global game_mode, brick_num, bricks_list, dx, dy, fail, paddle_x
+
+    paddle_x = canvas_width / 3    
+    for bricks in bricks_list:
+        r = random.randint(100,200)
+        g = random.randint(100,200)
+        b = random.randint(100,200)
+        bricks.color = [r,g,b]        
+        bricks.visivle = True
+    game_mode = 0
+    brick_num = 99    
+    dx =  8
+    dy = -8
+    fail = 0
+
+pygame.init()
+pygame.joystick.init()
+infoObject = pygame.display.Info()
+screensize = (infoObject.current_w, infoObject.current_h)
+canvas_width = infoObject.current_w
+canvas_height = infoObject.current_h
+pygame.display.set_caption(u"arkanoid")
+canvas = pygame.display.set_mode(screensize)
+clock = pygame.time.Clock()
+font = pygame.font.SysFont(None, 128)
+fontDebug = pygame.font.SysFont(None, 32)
+menu = Box(pygame, canvas, "menu", [canvas_width-450, 0, 450, canvas_height], (255,255,0))
+paddle_x = 0
+paddle_y = (canvas_height - 48)
+paddle = Box(pygame, canvas, "paddle", [paddle_x, paddle_y, 100, 24], (255,255,255))
+ball_x = paddle_x
+ball_y = paddle_y
+ball   = Circle(pygame, canvas, "ball", [ball_x, ball_x], 8, (255,255,255))
+brick_num = 0
+brick_x = 70
+brick_y = 60
+brick_w = 0
+brick_h = 0
+for i in range( 0, 99):
+    if((i % 11)==0):
+        brick_w = 0
+        brick_h = brick_h + 18        
+    bricks_list.append (Box(pygame, canvas, "brick_"+str(i), [ (canvas_width-(780+450))/2 + brick_w + brick_x, brick_h+ brick_y, 58, 16], [255,255,255]))
+    brick_w = brick_w + 60
+resetGame()
+running = True
+while running:
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            running = False
+        elif event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_ESCAPE:
+                running = False
+    if pygame.key.get_pressed()[K_LEFT]:
+        paddle_x = paddle_x - sp
+        if paddle_x<0:
+            paddle_x = 0                    
+    elif pygame.key.get_pressed()[K_RIGHT]:
+        paddle_x = paddle_x + sp
+        if paddle_x>canvas_width-550:
+            paddle_x = canvas_width-550
+    if pygame.key.get_pressed()[K_SPACE]:
+        if(game_mode == 0):
+            game_mode = 1            
+    canvas.fill(block)
+    menu.update()
+    joystick_count = pygame.joystick.get_count()
+    for i in range(joystick_count):
+        if(i==0):
+            joystick = pygame.joystick.Joystick(i)
+            joystick.init()
+            axes = joystick.get_numaxes()        
+            for i in range( axes ):
+                axis = joystick.get_axis( i )
+                if(i==0 and axis<-0.5):
+                    paddle_x = paddle_x - sp
+                    if paddle_x<0:
+                        paddle_x = 0
+                elif(i==0 and axis>0.5):
+                    paddle_x = paddle_x + sp
+                    if paddle_x>canvas_width-550:
+                        paddle_x = canvas_width-550            
+            buttons = joystick.get_numbuttons()
+            for i in range( buttons ):
+                button = joystick.get_button( i )
+                if (i == 0 and button ):
+                    if(game_mode == 0):
+                        game_mode = 1            
+                elif (i == 1):
+                    if(button):
+                        sp = 24
+                    else:
+                        if pygame.key.get_pressed()[K_LSHIFT]:
+                            sp = 24
+                        else:
+                            sp = 8
+                elif  (i == 11 and button):
+                    paddle_x = paddle_x - sp
+                    if paddle_x<0:
+                        paddle_x = 0                    
+                elif  (i == 12 and button):
+                    paddle_x = paddle_x + sp
+                    if paddle_x>canvas_width-550:
+                        paddle_x = canvas_width-550
+    for bricks in bricks_list:
+        if(isCollision( ball.pos[0], ball.pos[1], bricks.rect)):
+            if(bricks.visivle):                
+                brick_num = brick_num -1
+                if(brick_num <= 0):
+                    resetGame()
+                    break
+                dy = -dy; 
+            bricks.visivle = False
+        bricks.update()            
+    showFont( u"Bricks",      canvas_width-350,  40, (255, 51, 51))
+    showFont( str(brick_num), canvas_width-270, 120, (255, 51, 51))
+    showFont( u"Fail",       canvas_width-320, 250, (255, 51, 51))
+    showFont( str(fail),     canvas_width-270, 330, (255, 51, 51))
+    paddle.rect[0] = paddle_x
+    paddle.update()
+    if(isCollision( ball.pos[0], ball.pos[1], paddle.rect)):        
+        dy = -dy;
+    if(game_mode == 0):
+        ball.pos[0] = ball_x = paddle.rect[0] + ( (paddle.rect[2] - ball.radius) >> 1 )
+        ball.pos[1] = ball_y = paddle.rect[1] - ball.radius        
+    elif(game_mode == 1):
+        ball_x += dx
+        ball_y += dy
+        if(ball_y + dy > canvas_height - ball.radius):
+            game_mode = 0            
+            fail = fail + 1
+        if(ball_x + dx > (canvas_width-450) - ball.radius or ball_x + dx < ball.radius):
+            dx = -dx
+        if(ball_y + dy > canvas_height - ball.radius or ball_y + dy < ball.radius):        
+            dy = -dy
+        ball.pos[0] = ball_x
+        ball.pos[1] = ball_y
+    ball.update()
+    pygame.display.update()
+    clock.tick(60)
+pygame.quit()
+quit()

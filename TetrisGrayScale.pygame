@@ -1,0 +1,430 @@
+# encoding: utf-8
+import os, sys, random
+import time
+import pygame 
+from pygame.locals import *
+from Tetris_drew import *
+
+BRICK_DROP_RAPIDLY   = 0.01
+BRICK_DOWN_SPEED_MAX = 0.5
+
+canvas_width = 0
+canvas_height = 0
+
+color_block         = (0,0,0)
+color_white         = (255, 255, 255)
+color_red           = (255, 0, 0)
+color_gray          = (107,130,114)
+color_gray_block    = (20,31,23)
+color_gray_green    = (0, 255, 0)
+color_light_gray    = (200, 200, 200)
+
+brick_dict = {
+    "10": ( 4, 8, 9,13), "11": ( 9,10,12,13),   # N1.
+    "20": ( 5, 8, 9,12), "21": ( 8, 9,13,14),   # N2.
+    "30": ( 8,12,13,14), "31": ( 4, 5, 8,12), "32": (8,  9, 10, 14), "33": (5,  9, 12, 13), # L1.
+    "40": (10,12,13,14), "41": ( 4, 8,12,13), "42": (8,  9, 10, 12), "43": (4,  5,  9, 13), # L2.
+    "50": ( 9,12,13,14), "51": ( 4, 8, 9,12), "52": (8,  9, 10, 13), "53": (5,  8,  9, 13), # T.
+    "60": ( 8, 9,12,13),    # O.
+    "70": (12,13,14,15), "71": ( 1, 5, 9,13)    #I.
+}
+
+bricks_array = []
+for i in range(10):
+    bricks_array.append([0]*20)
+bricks = []
+for i in range(4):
+    bricks.append([0]*4)
+bricks_next = []
+for i in range(4):
+    bricks_next.append([0]*4)
+bricks_next_object = []
+for i in range(4):
+    bricks_next_object.append([0]*4)    
+bricks_list = []
+for i in range(10):
+    bricks_list.append([0]*20)
+joystickBntState_list = [0,0]
+container_x = 3
+container_y =-4
+
+debug_message = False
+game_over = False
+brick_down_speed = BRICK_DOWN_SPEED_MAX
+brick_id = 1
+brick_state = 0
+brick_next_id = 1
+lines_number_max = 0
+lines_number = 0
+game_mode = 0
+
+def showFont( text, x, y, color):
+    global canvas    
+    text = font.render(text, True, color) 
+    canvas.blit( text, (x,y))
+
+def getBrickIndex( brickId, state):
+    global brick_dict
+
+    brickKey = str(brickId)+str(state)
+    return brick_dict[brickKey]
+
+def transformToBricks( brickId, state):
+    global bricks
+    for x in range(4):
+        for y in range(4):
+            bricks[x][y] = 0
+    p_brick = getBrickIndex(brickId, state)
+    for i in range(4):        
+        bx = int(p_brick[i] % 4)
+        by = int(p_brick[i] / 4)
+        bricks[bx][by] = brickId
+
+def ifCopyToBricksArray():
+    global bricks, bricks_array
+    global container_x, container_y
+
+    posX = 0
+    posY = 0
+    for x in range(4):
+        for y in range(4):
+           if (bricks[x][y] != 0):
+                posX = container_x + x
+                posY = container_y + y
+                if (posX >= 0 and posY >= 0):
+                    try:
+                        if (bricks_array[posX][posY] != 0):
+                            return False
+                    except:
+                        return False
+    return True
+
+def copyToBricksArray():
+    global bricks, bricks_array
+    global container_x, container_y
+    posX = 0
+    posY = 0
+    for x in range(4):
+        for y in range(4):
+            if (bricks[x][y] != 0):
+                posX = container_x + x
+                posY = container_y + y
+                if (posX >= 0 and posY >= 0):
+                    bricks_array[posX][posY] = bricks[x][y]
+     
+def resetGame():
+    global BRICK_DOWN_SPEED_MAX
+    global bricks_array, bricks, lines_number, lines_number_max
+    for x in range(10):
+        for y in range(20):
+            bricks_array[x][y] = 0
+    for x in range(4):
+        for y in range(4):
+            bricks[x][y] = 0
+    brick_down_speed = BRICK_DOWN_SPEED_MAX
+    if(lines_number > lines_number_max):
+        lines_number_max = lines_number
+    lines_number = 0
+
+def ifClearBrick():
+    pointNum = 0
+    lineNum = 0
+    for y in range(20):
+        for x in range(10):
+            if (bricks_array[x][y] > 0):
+                pointNum = pointNum + 1
+            if (pointNum == 10):
+                for i in range(10):
+                    lineNum = lineNum + 1
+                    bricks_array[i][y] = 9
+        pointNum = 0
+    return lineNum
+
+def updateNextBricks(brickId):
+    global bricks_next
+    for y in range(4):
+        for x in range(4):
+            bricks_next[x][y] = 0
+    pBrick = getBrickIndex(brickId, 0)
+    for i in range(4):
+        bx = int(pBrick[i] % 4)
+        by = int(pBrick[i] / 4)
+        bricks_next[bx][by] = brickId
+
+    background_bricks_next.color = color_gray
+    background_bricks_next.update()
+    pos_y = 112
+    for y in range(4):
+        pos_x = 592
+        for x in range(4):
+            if(bricks_next[x][y] != 0):
+                bricks_next_object[x][y].rect[0] = pos_x
+                bricks_next_object[x][y].rect[1] = pos_y
+                # ColorVer:依照方塊編號設定顏色.
+                if (bricks_next[x][y]==1):
+                    bricks_next_object[x][y].color = color_gray_block
+                elif (bricks_next[x][y]==2):
+                    bricks_next_object[x][y].color = color_gray_block
+                elif (bricks_next[x][y]==3):
+                    bricks_next_object[x][y].color = color_gray_block
+                elif (bricks_next[x][y]==4):
+                    bricks_next_object[x][y].color = color_gray_block
+                elif (bricks_next[x][y]==5):
+                    bricks_next_object[x][y].color = color_gray_block
+                elif (bricks_next[x][y]==6):
+                    bricks_next_object[x][y].color = color_gray_block
+                elif (bricks_next[x][y]==7):
+                    bricks_next_object[x][y].color = color_gray_block
+                elif (bricks_next[x][y]==9):
+                    bricks_next_object[x][y].color = color_gray_block
+                bricks_next_object[x][y].update()
+            pos_x = pos_x + 28        
+        pos_y = pos_y + 28
+                
+def brickNew():
+    global game_over, container_x, container_y, brick_id, brick_next_id, brick_state
+    global lines_number, game_mode
+    game_over = False
+    if (container_y < 0):
+        game_over = True
+    container_y = container_y - 1
+    copyToBricksArray()  
+    lines = ifClearBrick() / 10;        
+    if (lines > 0):
+        lines_number =  lines_number + lines
+        game_mode = 1
+    container_x = 3
+    container_y =-4
+    brick_id = brick_next_id
+    brick_next_id = random.randint( 1, 7)
+    brick_state = 0
+    if (game_over):
+        resetGame()
+    
+def clearBrick():
+    global bricks_array
+    temp = 0    
+    for x in range(10):
+        for i in range(19):
+            for y in range(20):
+                if (bricks_array[x][y] == 9):
+                    if (y > 0):
+                        temp = bricks_array[x][y - 1]
+                        bricks_array[x][y - 1] = bricks_array[x][y]
+                        bricks_array[x][y] = temp
+                        y = y - 1
+            bricks_array[x][0] = 0
+
+def rotationBrick():
+    global container_x, brick_id, brick_state
+    if (container_x == 8):
+        return
+    if (brick_id == 1 or brick_id == 2 or brick_id == 7):
+        if (brick_id == 7):
+            if (container_x < 0 or container_x == 7):
+                return
+        brick_state = brick_state + 1
+        if (brick_state > 1):
+            brick_state = 0                    
+        transformToBricks(brick_id, brick_state)
+        if (not ifCopyToBricksArray()):
+            brick_state = brick_state - 1
+            if (brick_state < 0):
+                brick_state = 1
+    elif (brick_id == 3 or brick_id == 4 or brick_id == 5):
+        brick_state = brick_state + 1
+        if (brick_state > 3):
+            brick_state = 0                    
+        transformToBricks(brick_id, brick_state)
+        if (not ifCopyToBricksArray()):
+            brick_state = brick_state - 1
+            if (brick_state < 0):
+                brick_state = 3
+pygame.init()
+pygame.display.set_caption(u"Tetris")
+pygame.joystick.init()
+infoObject = pygame.display.Info()
+screensize = (infoObject.current_w, infoObject.current_h)
+canvas_width = infoObject.current_w
+canvas_height = infoObject.current_h
+canvas = pygame.display.set_mode(screensize)
+clock = pygame.time.Clock()
+font = pygame.font.SysFont(None, 64)
+for y in range(20):
+    for x in range(10):
+        bricks_list[x][y] = Box(pygame, canvas, "brick_x_" + str(x) + "_y_" + str(y), [ 0, 0, 26, 26], color_gray_block)
+for y in range(4):
+    for x in range(4):
+        bricks_next_object[x][y] = Box(pygame, canvas, "brick_next_x_" + str(x) + "_y_" + str(y), [ 0, 0, 26, 26], color_gray_block)
+background = Box(pygame, canvas, "background", [ 278, 78, 282, 562], color_gray)
+background_bricks_next = Box(pygame, canvas, "background_bricks_next", [ 590, 110, 114, 114], color_gray)
+brick_next_id = random.randint( 1, 7)
+brickNew()
+running = True
+time_temp = time.time()
+time_now = 0
+while running:
+    time_now = time_now + (time.time() - time_temp)
+    time_temp = time.time()
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            running = False        
+        if event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_ESCAPE:
+                running = False
+            elif event.key == pygame.K_d:
+                debug_message = not debug_message
+            elif event.key == pygame.K_SPACE and game_mode == 0:
+                rotationBrick()
+            elif event.key == pygame.K_DOWN and game_mode == 0:
+                brick_down_speed = BRICK_DROP_RAPIDLY
+            elif event.key == pygame.K_LEFT and game_mode == 0:
+                container_x = container_x - 1
+                if (container_x < 0):
+                    if (container_x == -1):
+                        if (bricks[0][0] != 0 or bricks[0][1] != 0 or bricks[0][2] != 0 or bricks[0][3] != 0):
+                            container_x = container_x + 1
+                    elif (container_x == -2): 
+                        if (bricks[1][0] != 0 or bricks[1][1] != 0 or bricks[1][2] != 0 or bricks[1][3] != 0):
+                            container_x = container_x + 1
+                    else:
+                        container_x = container_x + 1
+                if (not ifCopyToBricksArray()):
+                    container_x = container_x + 1
+            elif event.key == pygame.K_RIGHT and game_mode == 0:
+                container_x = container_x + 1
+                if (container_x > 6):
+                    if (container_x == 7):
+                        if (bricks[3][0] != 0 or bricks[3][1] != 0 or bricks[3][2] != 0 or bricks[3][3] != 0):
+                            container_x = container_x - 1;                        
+                    elif (container_x == 8):
+                        if (bricks[2][0] != 0 or bricks[2][1] != 0 or bricks[2][2] != 0 or bricks[2][3] != 0):
+                            container_x = container_x - 1                        
+                    else:
+                        container_x = container_x - 1
+                if (not ifCopyToBricksArray()):
+                    container_x = container_x - 1                    
+        if event.type == pygame.KEYUP:
+            if event.key == pygame.K_DOWN:
+                brick_down_speed = BRICK_DOWN_SPEED_MAX
+    joystick_count = pygame.joystick.get_count()
+    for i in range(joystick_count):
+        if(i==0):
+            joystick = pygame.joystick.Joystick(i)
+            joystick.init()
+            buttons = joystick.get_numbuttons()
+            for i in range( buttons ):
+                button = joystick.get_button( i )
+                if (i == 0 and joystickBntState_list[0] == 0 and button ):
+                    joystickBntState_list[0] = 1
+                    rotationBrick()
+                elif (i == 0 and joystickBntState_list[0] == 1 and not button ):
+                    joystickBntState_list[0] = 0
+                if (i == 1 and joystickBntState_list[1] == 0 and button ):
+                    joystickBntState_list[1] = 1
+                    rotationBrick()
+                elif (i == 1 and joystickBntState_list[1] == 1 and not button ):
+                    joystickBntState_list[1] = 0
+    canvas.fill(color_block)
+    if (game_mode == 0):
+        if(time_now >= brick_down_speed):
+            container_y = container_y + 1; 
+            if (not ifCopyToBricksArray()):
+                brickNew()            
+            transformToBricks( brick_id, brick_state)
+            time_now = 0
+    elif (game_mode == 1):
+        clearBrick()
+        game_mode = 0
+        transformToBricks(brick_id, brick_state)
+    updateNextBricks(brick_next_id)
+    pos_y = 80
+    background.color = color_gray
+    background.update()
+    for y in range(20):
+        pos_x = 280
+        for x in range(10):
+            if(bricks_array[x][y] != 0):
+                bricks_list[x][y].rect[0] = pos_x
+                bricks_list[x][y].rect[1] = pos_y
+                if (bricks_array[x][y]==1):
+                    bricks_list[x][y].color = color_gray_block
+                elif (bricks_array[x][y]==2):
+                    bricks_list[x][y].color = color_gray_block
+                elif (bricks_array[x][y]==3):
+                    bricks_list[x][y].color = color_gray_block
+                elif (bricks_array[x][y]==4):
+                    bricks_list[x][y].color = color_gray_block
+                elif (bricks_array[x][y]==5):
+                    bricks_list[x][y].color = color_gray_block
+                elif (bricks_array[x][y]==6):
+                    bricks_list[x][y].color = color_gray_block
+                elif (bricks_array[x][y]==7):
+                    bricks_list[x][y].color = color_gray_block
+                bricks_list[x][y].update()
+            else:
+                bricks_list[x][y].color = color_gray_block
+            pos_x = pos_x + 28
+        pos_y = pos_y + 28    
+    for y in range(4):
+        for x in range(4):            
+            if (bricks[x][y] != 0):
+                posX = container_x + x
+                posY = container_y + y
+                if (posX >= 0 and posY >= 0):
+                    bricks_list[posX][posY].rect[0] = (posX * 28) + 280
+                    bricks_list[posX][posY].rect[1] = (posY * 28) + 80
+                    if (bricks[x][y]==1):
+                        bricks_list[posX][posY].color = color_gray_block
+                    elif (bricks[x][y]==2):
+                        bricks_list[posX][posY].color = color_gray_block
+                    elif (bricks[x][y]==3):
+                        bricks_list[posX][posY].color = color_gray_block
+                    elif (bricks[x][y]==4):
+                        bricks_list[posX][posY].color = color_gray_block
+                    elif (bricks[x][y]==5):
+                        bricks_list[posX][posY].color = color_gray_block
+                    elif (bricks[x][y]==6):
+                        bricks_list[posX][posY].color = color_gray_block
+                    elif (bricks[x][y]==7):
+                        bricks_list[posX][posY].color = color_gray_block
+                    elif (bricks[x][y]==9):
+                        bricks_list[posX][posY].color = color_gray_block
+                    bricks_list[posX][posY].update()
+    if(debug_message):
+        str_x = ""
+        pos_x = 15
+        pos_y = 20
+        for y in range(20):
+            str_x = ""
+            for x in range(10):
+                str_x = str_x + str(bricks_array[x][y]) + " "
+            showFont( str_x, pos_x, pos_y, color_red)
+            pos_y = pos_y + 28            
+        posX = 0
+        posY = 0    
+        for y in range(4):
+            str_x = ""
+            for x in range(4):            
+                if (bricks[x][y] != 0):
+                    posX = container_x + x
+                    posY = container_y + y
+                    if (posX >= 0 and posY >= 0):
+                        str_x = str_x + str(bricks[x][y]) + " "
+                else:
+                    str_x = str_x + "  "
+            pos_x = 15 + (container_x * 26)
+            pos_y = 20 + (posY * 28)
+            showFont( str_x, pos_x, pos_y, color_white)
+    pygame.draw.rect( canvas, color_gray, [canvas_width-400, 0, 450, canvas_height])
+    showFont( u"NEXT", 588, 70, color_gray)
+    showFont( u"High Score", 588, 270, color_gray)
+    showFont( str(int(lines_number_max)), 588, 310, color_gray)
+    showFont( u"Score", 588, 380, color_gray)
+    showFont( str(int(lines_number)), 588, 420, color_gray)
+    if(debug_message):
+        showFont( u"FPS:" + str(clock.get_fps()), 6, 0, color_gray_green)    
+    pygame.display.update()
+    clock.tick(60)
+pygame.quit()
+quit()

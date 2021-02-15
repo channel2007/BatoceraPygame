@@ -1,0 +1,327 @@
+# encoding: utf-8
+import os
+import random
+import sys
+
+import pygame
+from pygame.locals import *
+
+CONST_STARTING_1P_POS_X = 8
+CONST_STARTING_1P_POS_Y = 8
+CONST_STARTING_2P_POS_X = 56
+CONST_STARTING_2P_POS_Y = 40
+canvas_width = 0
+canvas_height = 0
+game_area_width  = 64
+game_area_height = 48
+block = (0,0,0)
+green = (38, 220, 22)
+gameAreaArray =[[0]*game_area_height for i in range(game_area_width)]
+debug_message = False
+game1P_x = CONST_STARTING_1P_POS_X
+game1P_y = CONST_STARTING_1P_POS_Y
+game1P_direction = 1
+game2P_x = CONST_STARTING_2P_POS_X
+game2P_y = CONST_STARTING_2P_POS_Y
+game2P_direction = 0
+score1P = 0
+score2P = 0
+playFial = 0
+fps = 8
+restartTime = 0
+gameMode = 0
+move = True
+offsetX = 0
+offsetY = 0
+
+def showFont( text, x, y, color):
+    global canvas
+    text = font_24.render(text, True, color) 
+    canvas.blit( text, (x,y))
+
+def ifBoundary1P(direction):
+    global gameAreaArray, game1P_x, game1P_y, playFial, score2P
+    
+    if(game1P_x > game_area_width-2):
+        game1P_x = game_area_width-1
+    elif(game1P_x < 1):
+        game1P_x = 0
+    if(game1P_y > game_area_height-2):
+        game1P_y = game_area_height-1
+    elif(game1P_y < 1):
+        game1P_y = 0
+    if(gameAreaArray[game1P_x][game1P_y] != 0):
+        playFial = 1
+        gameAreaArray[game1P_x][game1P_y] = 2
+        score2P += 1
+    else:
+        if(direction==0):
+            gameAreaArray[game1P_x][game1P_y] = 10
+        elif(direction==1):
+            gameAreaArray[game1P_x][game1P_y] = 11                
+        elif(direction==2):
+            gameAreaArray[game1P_x][game1P_y] = 12
+        elif(direction==3):
+            gameAreaArray[game1P_x][game1P_y] = 13
+
+def ifBoundary2P(direction):
+    global gameAreaArray, game2P_x, game2P_y, playFial, score1P
+    if(game2P_x > game_area_width-2):
+        game2P_x = game_area_width-1
+    elif(game2P_x < 1):
+        game2P_x = 0
+    if(game2P_y > game_area_height-2):
+        game2P_y = game_area_height-1
+    elif(game2P_y < 1):
+        game2P_y = 0
+    if(gameAreaArray[game2P_x][game2P_y] != 0):
+        playFial = 2
+        gameAreaArray[game2P_x][game2P_y] = 2
+        score1P += 1
+    else:
+        if(direction==0):
+            gameAreaArray[game2P_x][game2P_y] = 20
+        elif(direction==1):
+            gameAreaArray[game2P_x][game2P_y] = 21                
+        elif(direction==2):
+            gameAreaArray[game2P_x][game2P_y] = 22
+        elif(direction==3):
+            gameAreaArray[game2P_x][game2P_y] = 23
+
+def restart():
+    global gameAreaArray, game1P_x, game1P_y, game2P_x, game2P_y, playFial
+    global game1P_direction, game2P_direction
+    for y in range(game_area_height):
+        for x in range(game_area_width):
+            gameAreaArray[x][y] = 0
+    game1P_x = CONST_STARTING_1P_POS_X
+    game1P_y = CONST_STARTING_1P_POS_Y
+    game1P_direction = 1
+    game2P_x = CONST_STARTING_2P_POS_X
+    game2P_y = CONST_STARTING_2P_POS_Y
+    game2P_direction = 0
+    playFial = 0
+
+def startGame():
+    global score1P, score2P, restartTime, gameMode
+    score1P = 0
+    score2P = 0
+    restartTime = 0
+    restart()   
+    gameMode = 1
+
+if __name__=='__main__':
+    pygame.init()
+    pygame.joystick.init()
+    pygame.display.set_caption(u"Blockade")
+    infoObject = pygame.display.Info()
+    screensize = (infoObject.current_w, infoObject.current_h)
+    canvas_width = infoObject.current_w
+    canvas_height = infoObject.current_h
+    canvas = pygame.display.set_mode(screensize)
+    clock = pygame.time.Clock()
+    font_24 = pygame.font.Font("fonts/Cascadia.ttf", 24)
+    restart()
+    gameAreaArray[game1P_x][game1P_y] = 11
+    gameAreaArray[game2P_x][game2P_y] = 20
+    offsetX = (canvas_width-450-(game_area_width*12)) >> 1
+    offsetY = (canvas_height-(game_area_height*12)) >> 1
+    running = True
+    while running:
+        clock.tick(fps)
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                running = False
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_ESCAPE:
+                    running = False
+                elif event.key == pygame.K_p:
+                    debug_message = not debug_message
+                if gameMode == 0:
+                    if event.key == pygame.K_SPACE:
+                        startGame()
+                elif gameMode == 1:
+                    if event.key == pygame.K_w:
+                        game1P_direction = 0
+                    elif event.key == pygame.K_s:
+                        game1P_direction = 1
+                    elif event.key == pygame.K_a:
+                        game1P_direction = 2
+                    elif event.key == pygame.K_d:
+                        game1P_direction = 3
+                    if event.key == pygame.K_i:
+                        game2P_direction = 0
+                    elif event.key == pygame.K_k:
+                        game2P_direction = 1
+                    elif event.key == pygame.K_j:
+                        game2P_direction = 2
+                    elif event.key == pygame.K_l:
+                        game2P_direction = 3
+        joystick_count = pygame.joystick.get_count()
+        for i in range(joystick_count):
+            if(i==0):
+                joystick1P = pygame.joystick.Joystick(i)
+                joystick1P.init()
+                name = joystick1P.get_name()                                
+                axes = joystick1P.get_numaxes()        
+                for i in range( axes ):
+                    axis = joystick1P.get_axis( i )
+                    if(i==0 and axis<-0.5):
+                        game1P_direction = 2
+                    elif(i==0 and axis>0.5):
+                        game1P_direction = 3
+                    elif(i==1 and axis<-0.5):
+                        game1P_direction = 0
+                    elif(i==1 and axis>0.5):
+                        game1P_direction = 1
+                buttons = joystick1P.get_numbuttons()
+                for i in range( buttons ):
+                    button = joystick1P.get_button( i )
+                    if ((i == 0 or i == 1) and button ):
+                        if gameMode == 0:
+                            startGame()
+                    elif  (i == 13 and button):
+                        game1P_direction = 0
+                    elif  (i == 14 and button):
+                        game1P_direction = 1
+                    elif  (i == 11 and button):
+                        game1P_direction = 2
+                    elif  (i == 12 and button):
+                        game1P_direction = 3
+            elif(i==1):
+                joystick2P = pygame.joystick.Joystick(i)
+                joystick2P.init()
+                name = joystick2P.get_name()
+                axes = joystick2P.get_numaxes()        
+                for i in range( axes ):
+                    axis = joystick2P.get_axis( i )
+                    if(i==0 and axis<-0.5):
+                        game2P_direction = 2
+                    elif(i==0 and axis>0.5):
+                        game2P_direction = 3
+                    elif(i==1 and axis<-0.5):
+                        game2P_direction = 0
+                    elif(i==1 and axis>0.5):
+                        game2P_direction = 1
+                buttons = joystick2P.get_numbuttons()
+                for i in range( buttons ):
+                    button = joystick2P.get_button( i )
+                    if  (i == 13 and button):
+                        game2P_direction = 0
+                    elif  (i == 14 and button):
+                        game2P_direction = 1
+                    elif  (i == 11 and button):
+                        game2P_direction = 2
+                    elif  (i == 12 and button):
+                        game2P_direction = 3
+        canvas.fill(block)
+        pygame.draw.rect( canvas, (255,255,0), [canvas_width-450, 0, 450, canvas_height])
+        if gameMode == 0:
+            for y in range(18,24):
+                for x in range(25,40):
+                    gameAreaArray[x][y] = 3
+            showFont( "GAME", offsetX+380, offsetY+240, green)
+            showFont( "OVER", offsetX+380, offsetY+262, green)
+            showFont( str(score1P), offsetX+340, offsetY+262, green)
+            showFont( str(score2P), offsetX+460, offsetY+262, green)
+        elif gameMode == 1:
+            if (playFial == 0):
+                if(move):
+                    gameAreaArray[game1P_x][game1P_y] = 1
+                    if (game1P_direction == 0):
+                        game1P_y -= 1
+                    elif (game1P_direction == 1):
+                        game1P_y += 1
+                    elif (game1P_direction == 2):
+                        game1P_x -= 1
+                    elif (game1P_direction == 3):
+                        game1P_x += 1
+                    ifBoundary1P(game1P_direction)
+                else:
+                    gameAreaArray[game2P_x][game2P_y] = 1
+                    if (game2P_direction == 0):
+                        game2P_y -= 1
+                    elif (game2P_direction == 1):
+                        game2P_y += 1
+                    elif (game2P_direction == 2):
+                        game2P_x -= 1
+                    elif (game2P_direction == 3):
+                        game2P_x += 1
+                    ifBoundary2P(game2P_direction)
+                move = not move
+            else:
+                if(playFial==1):
+                    if(gameAreaArray[game1P_x][game1P_y]==2):
+                        gameAreaArray[game1P_x][game1P_y] = 3
+                    else:
+                        gameAreaArray[game1P_x][game1P_y] = 2
+                elif(playFial==2):
+                    if(gameAreaArray[game2P_x][game2P_y]==2):
+                        gameAreaArray[game2P_x][game2P_y] = 3
+                    else:
+                        gameAreaArray[game2P_x][game2P_y] = 2
+                restartTime += 1
+                if((restartTime / fps) == 3):
+                    if(score1P >=6 or score2P >= 6):
+                        gameMode = 0
+                    else:
+                        restartTime = 0
+                        restart()            
+            if (playFial > 0):    
+                if(playFial==1):
+                    if(gameAreaArray[game1P_x][game1P_y]==2):                    
+                        showFont( str(score2P), (offsetX+(CONST_STARTING_2P_POS_X)*12), offsetY+((CONST_STARTING_2P_POS_Y + 2)*12), green)
+                    showFont( str(score1P), (offsetX+(CONST_STARTING_1P_POS_X)*12), offsetY+((CONST_STARTING_1P_POS_Y - 2)*12), green)                    
+                elif(playFial==2):
+                    if(gameAreaArray[game2P_x][game2P_y]==2):
+                        showFont( str(score1P), offsetX+((CONST_STARTING_1P_POS_X)*12), offsetY+((CONST_STARTING_1P_POS_Y - 2)*12), green)
+                    showFont( str(score2P), offsetX+((CONST_STARTING_2P_POS_X)*12), offsetY+((CONST_STARTING_2P_POS_Y + 2)*12), green)
+        gameAreaArray[32][0]=6
+        for x in range(game_area_width):
+            if(gameAreaArray[x][0]==0):
+                gameAreaArray[x][0] = 1
+            if(gameAreaArray[x][game_area_height-1]==0):
+                gameAreaArray[x][game_area_height-1] =  1
+        for y in range(game_area_height):
+            if(gameAreaArray[0][y]==0):
+                gameAreaArray[0][y] = 1
+            if(gameAreaArray[game_area_width-1][y]==0):
+                gameAreaArray[game_area_width-1][y] = 1        
+        ix = offsetX
+        iy = offsetY
+        for y in range(game_area_height):
+            for x in range(game_area_width): 
+                if(gameAreaArray[x][y]==1):
+                    showFont( u"▨", ix, iy, green)
+                elif(gameAreaArray[x][y]==2):                
+                    showFont( u"▦", ix, iy, green)
+                elif(gameAreaArray[x][y]==3):
+                    showFont( u"⠀", ix, iy, green)
+                elif(gameAreaArray[x][y]==6):
+                    showFont( u"6", ix, iy, green)
+                elif(gameAreaArray[x][y]==10):
+                    showFont( u"▴", ix, iy, green)
+                elif(gameAreaArray[x][y]==11):
+                    showFont( u"▾", ix, iy, green)
+                elif(gameAreaArray[x][y]==12):
+                    showFont( u"◂", ix, iy, green)
+                elif(gameAreaArray[x][y]==13):
+                    showFont( u"▸", ix, iy, green)
+                elif(gameAreaArray[x][y]==20):
+                    showFont( u"▵", ix, iy, green)
+                elif(gameAreaArray[x][y]==21):
+                    showFont( u"▿", ix, iy, green)
+                elif(gameAreaArray[x][y]==22):
+                    showFont( u"◃", ix, iy, green)
+                elif(gameAreaArray[x][y]==23):
+                    showFont( u"▹", ix, iy, green)
+                if(debug_message):
+                    if(gameAreaArray[x][y]!=0):
+                        showFont( str(gameAreaArray[x][y]), ix, iy, (255, 0, 0))
+                        showFont( u"FPS:" + str(int(clock.get_fps())), 8, 2, (255, 255, 255))
+                ix+=12
+            ix = offsetX
+            iy+=12
+        pygame.display.update()
+    pygame.quit()
+    quit()
