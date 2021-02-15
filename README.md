@@ -1,6 +1,9 @@
 # 前言
 Batocera模擬器上玩自製Pygame遊戲
 
+# 安裝方式
+下載後請先解壓縮並將所有檔案放入安裝有Batocera模擬器的SD卡share\roms\pygame目錄內，並重新開啟機器就可以在Pygame選單內看到遊戲。
+
 # 遊戲介紹
 ![alt Blockade](https://github.com/channel2007/BatoceraPygame/blob/master/images/Blockade-image.png "Blockade")
 * 遊戲名稱：Blockade(彩色版)(雙人遊戲)
